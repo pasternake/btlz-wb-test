@@ -66,6 +66,19 @@ export class TariffsBoxRepository {
     }
 }
 
+export class SpreadsheetRepository {
+    #db: DbClient;
+
+    constructor(db: DbClient = knex) {
+        this.#db = db;
+    }
+
+    async getAllIds(): Promise<string[]> {
+        const rows = await this.#db("spreadsheets").select("spreadsheet_id");
+        return rows.map((row) => row.spreadsheet_id);
+    }
+}
+
 export function buildRawSnapshotInput(params: {
     jsonPayload: string;
     textPayload: string;

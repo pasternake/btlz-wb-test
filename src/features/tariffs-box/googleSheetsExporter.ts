@@ -2,7 +2,6 @@ import { google, sheets_v4 } from "googleapis";
 import { TariffsBoxFormattedRecord } from "#features/tariffs-box/types.js";
 
 export interface GoogleSheetsExporterConfig {
-    spreadsheetId: string;
     range: string;
     clientEmail: string;
     privateKey: string;
@@ -11,9 +10,11 @@ export interface GoogleSheetsExporterConfig {
 export class GoogleSheetsExporter {
     #config: GoogleSheetsExporterConfig;
     #client: sheets_v4.Sheets;
+    #logger: Console;
 
-    constructor(config: GoogleSheetsExporterConfig) {
+    constructor(config: GoogleSheetsExporterConfig, logger?: Console) {
         this.#config = config;
+        this.#logger = logger ?? console;
         const auth = new google.auth.JWT({
             email: config.clientEmail,
             key: config.privateKey,
@@ -22,7 +23,7 @@ export class GoogleSheetsExporter {
         this.#client = google.sheets({ version: "v4", auth });
     }
 
-    async exportRows(rows: TariffsBoxFormattedRecord[]): Promise<number> {
+    async exportRows(rows: TariffsBoxFormattedRecord[], spreadsheetId: string): Promise<number> {
         if (rows.length === 0) {
             return 0;
         }
@@ -63,15 +64,20 @@ export class GoogleSheetsExporter {
             ]),
         ];
 
-        await this.#client.spreadsheets.values.update({
-            spreadsheetId: this.#config.spreadsheetId,
-            range: this.#config.range,
-            valueInputOption: "RAW",
-            requestBody: {
-                values,
-            },
-        });
-        return rows.length;
+        try {
+            await this.#client.spreadsheets.values.update({
+                spreadsheetId,
+                range: this.#config.range,
+                valueInputOption: "RAW",
+                requestBody: {
+                    values,
+                },
+            });
+            this.#logger?.info(`[tariffs-box] Exported ${rows.length} rows to spreadsheet ${spreadsheetId}`);
+            return rows.length;
+        } catch (error) {
+            this.#logger?.error(`[tariffs-box] Failed to export to spreadsheet ${spreadsheetId}`, error);
+            throw error;
+        }
     }
-
 }

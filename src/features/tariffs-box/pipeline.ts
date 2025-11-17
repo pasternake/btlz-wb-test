@@ -1,7 +1,7 @@
 import { TariffsBoxApiClient } from "#features/tariffs-box/apiClient.js";
 import { GoogleSheetsExporter } from "#features/tariffs-box/googleSheetsExporter.js";
 import { RawStorageService } from "#features/tariffs-box/rawStorage.js";
-import { TariffsBoxRepository, TariffsBoxRawRepository, buildRawSnapshotInput } from "#features/tariffs-box/repositories.js";
+import { TariffsBoxRepository, TariffsBoxRawRepository, SpreadsheetRepository, buildRawSnapshotInput } from "#features/tariffs-box/repositories.js";
 import { TariffsBoxParser } from "#features/tariffs-box/parser.js";
 import { TariffsBoxPipelineResult } from "#features/tariffs-box/types.js";
 
@@ -12,6 +12,7 @@ export interface TariffsBoxPipelineDependencies {
     formattedRepository: TariffsBoxRepository;
     parser: TariffsBoxParser;
     exporter: GoogleSheetsExporter;
+    spreadsheetRepository: SpreadsheetRepository;
     logger?: Console;
 }
 
@@ -22,6 +23,7 @@ export class TariffsBoxPipeline {
     #formattedRepository: TariffsBoxPipelineDependencies["formattedRepository"];
     #parser: TariffsBoxPipelineDependencies["parser"];
     #exporter: TariffsBoxPipelineDependencies["exporter"];
+    #spreadsheetRepository: TariffsBoxPipelineDependencies["spreadsheetRepository"];
     #logger: Console;
 
     constructor(deps: TariffsBoxPipelineDependencies) {
@@ -31,6 +33,7 @@ export class TariffsBoxPipeline {
         this.#formattedRepository = deps.formattedRepository;
         this.#parser = deps.parser;
         this.#exporter = deps.exporter;
+        this.#spreadsheetRepository = deps.spreadsheetRepository;
         this.#logger = deps.logger ?? console;
     }
 
@@ -67,15 +70,38 @@ export class TariffsBoxPipeline {
         const replaced = await this.#formattedRepository.replaceForRawId(rawSnapshot.id, formattedRows);
         this.#logger.info("[tariffs-box] Formatted rows persisted", { count: replaced });
 
-        const exported = await this.#exporter.exportRows(formattedRows);
-        this.#logger.info("[tariffs-box] Exported rows to Google Sheets", { exported });
+        const spreadsheetIds = await this.#spreadsheetRepository.getAllIds();
+        this.#logger.info("[tariffs-box] Found spreadsheets to export", { count: spreadsheetIds.length });
+
+        let totalExported = 0;
+        const exportResults: Array<{ spreadsheetId: string; success: boolean; rowsExported: number; error?: string }> = [];
+
+        for (const spreadsheetId of spreadsheetIds) {
+            try {
+                const exported = await this.#exporter.exportRows(formattedRows, spreadsheetId);
+                totalExported += exported;
+                exportResults.push({ spreadsheetId, success: true, rowsExported: exported });
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                this.#logger.error(`[tariffs-box] Failed to export to spreadsheet ${spreadsheetId}`, { error: errorMessage });
+                exportResults.push({ spreadsheetId, success: false, rowsExported: 0, error: errorMessage });
+            }
+        }
+
+        this.#logger.info("[tariffs-box] Export summary", {
+            totalSpreadsheets: spreadsheetIds.length,
+            successful: exportResults.filter((r) => r.success).length,
+            failed: exportResults.filter((r) => !r.success).length,
+            totalRowsExported: totalExported,
+        });
 
         return {
             rawSnapshotId: rawSnapshot.id,
             parsedRows: formattedRows.length,
-            exportedRows: exported,
+            exportedRows: totalExported,
             skipped: false,
             structuredResponse: parseResult.structuredResponse,
+            exportResults,
         };
     }
 }

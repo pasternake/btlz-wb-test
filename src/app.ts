@@ -3,7 +3,7 @@ import env from "#config/env/env.js";
 import { TariffsBoxPipeline } from "#features/tariffs-box/pipeline.js";
 import { TariffsBoxApiClient } from "#features/tariffs-box/apiClient.js";
 import { RawStorageService } from "#features/tariffs-box/rawStorage.js";
-import { TariffsBoxRawRepository, TariffsBoxRepository } from "#features/tariffs-box/repositories.js";
+import { TariffsBoxRawRepository, TariffsBoxRepository, SpreadsheetRepository } from "#features/tariffs-box/repositories.js";
 import { TariffsBoxParser } from "#features/tariffs-box/parser.js";
 import { GoogleSheetsExporter } from "#features/tariffs-box/googleSheetsExporter.js";
 import { TariffsBoxRetentionService } from "#features/tariffs-box/retentionService.js";
@@ -28,12 +28,15 @@ async function bootstrap() {
         rawRepository: new TariffsBoxRawRepository(),
         formattedRepository: new TariffsBoxRepository(),
         parser: new TariffsBoxParser(),
-        exporter: new GoogleSheetsExporter({
-            spreadsheetId: env.GOOGLE_SPREADSHEET_ID,
-            range: env.GOOGLE_SHEET_RANGE,
-            clientEmail: env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-            privateKey: env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
-        }),
+        exporter: new GoogleSheetsExporter(
+            {
+                range: env.GOOGLE_SHEET_RANGE,
+                clientEmail: env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+                privateKey: env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
+            },
+            console,
+        ),
+        spreadsheetRepository: new SpreadsheetRepository(),
         logger: console,
     });
 
@@ -48,6 +51,7 @@ async function bootstrap() {
             rawSnapshotId: result.rawSnapshotId,
             parsedRows: result.parsedRows,
             exportedRows: result.exportedRows,
+            exportResults: result.exportResults,
         });
         //TODO: uncomment after testing
         // console.log("Structured response:", JSON.stringify(result.structuredResponse, null, 2));
