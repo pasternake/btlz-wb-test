@@ -40,6 +40,20 @@ npm run knex:dev seed run
 npm run dev
 ```
 
+## Tariffs Box pipeline
+
+1. Скопируйте `example.env` в `.env` и заполните:
+   - Параметры подключения Postgres.
+   - `WB_API_*` для внешнего API.
+   - `RAW_STORAGE_DIR` — локальная директория для снапшотов.
+   - `GOOGLE_*` — реквизиты сервис-аккаунта и ID таблицы.
+2. Запустите `npm run dev` либо `npm run start` (после `npm run build`).
+3. Приложение последовательно:
+   - Выгружает тарифы из внешнего API.
+   - Сохраняет raw JSON/текст в файловой системе и таблице `tariffs_box_raw`.
+   - Нормализует данные и пишет их в `tariffs_box`.
+   - Экспортирует результат в указанный Google Spreadsheet.
+
 Запуск проверки самого приложения:
 ```bash
 docker compose up -d --build app
