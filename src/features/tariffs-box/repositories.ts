@@ -39,6 +39,7 @@ export class TariffsBoxRepository {
         return this.#db.transaction(async (trx) => {
             await trx("tariffs_box").where({ raw_id: rawId }).del();
             if (rows.length === 0) return 0;
+            const now = trx.fn.now();
             await trx("tariffs_box").insert(
                 rows.map((row) => ({
                     id: row.id,
@@ -57,6 +58,7 @@ export class TariffsBoxRepository {
                     box_storage_coef_expr: row.boxStorageCoefExpr,
                     box_storage_liter: row.boxStorageLiter,
                     meta: row.meta,
+                    updated_at: now,
                 })),
             );
             return rows.length;

@@ -40,10 +40,10 @@ ping -> fetch -> persistRawFiles -> insertRawDb -> parse -> upsertFormatted -> e
 - Дублированные ответы выявляются по хешу, сохраненному в `tariffs_box_raw.payload_hash`.
 - Экспорт в Google Sheets пропускается, если нет нормализованных строк.
 
-### Переменные окружения
-
 - `WB_API_URL`, `WB_API_PING_ENDPOINT`, `WB_API_TOKEN`, `WB_API_TIMEOUT_MS`
-- `RAW_STORAGE_DIR`
+- `RAW_STORAGE_DIR`, `RAW_STORAGE_RETENTION_DAYS`
+- `RAW_DB_RETENTION_DAYS`
+- `PIPELINE_REFRESH_INTERVAL_MINUTES`, `RETENTION_CLEANUP_INTERVAL_HOURS`
 - `GOOGLE_SPREADSHEET_ID`, `GOOGLE_SHEET_RANGE`
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
 
@@ -80,3 +80,10 @@ ping -> fetch -> persistRawFiles -> insertRawDb -> parse -> upsertFormatted -> e
 ```
 
 Эта структура сохраняется в `meta` таблицы `tariffs_box`, используется при экспорте в Google Sheets и возвращается из `TariffsBoxPipeline.run()`.
+
+### Планировщики и ретеншены
+
+- **Обновление тарифов** — `startSchedulers` перезапускает `TariffsBoxPipeline` каждые `PIPELINE_REFRESH_INTERVAL_MINUTES` (по умолчанию 60 минут).
+- **Retention файлов** — раз в `RETENTION_CLEANUP_INTERVAL_HOURS` очищает `storage/raw` от снапшотов старше `RAW_STORAGE_RETENTION_DAYS` (по умолчанию 7 дней).
+- **Retention `tariffs_box_raw`** — удаляет записи старше `RAW_DB_RETENTION_DAYS`.
+- **Retention `tariffs_box`** — для вчерашней даты сохраняется только последний `raw_id`; более старые ряды удаляются.
