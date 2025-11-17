@@ -1,15 +1,9 @@
 import { TariffsBoxApiClient } from "#features/tariffs-box/apiClient.js";
 import { GoogleSheetsExporter } from "#features/tariffs-box/googleSheetsExporter.js";
 import { RawStorageService } from "#features/tariffs-box/rawStorage.js";
-import {
-    TariffsBoxRepository,
-    TariffsBoxRawRepository,
-    buildRawSnapshotInput,
-} from "#features/tariffs-box/repositories.js";
+import { TariffsBoxRepository, TariffsBoxRawRepository, buildRawSnapshotInput } from "#features/tariffs-box/repositories.js";
 import { TariffsBoxParser } from "#features/tariffs-box/parser.js";
-import {
-    TariffsBoxPipelineResult,
-} from "#features/tariffs-box/types.js";
+import { TariffsBoxPipelineResult } from "#features/tariffs-box/types.js";
 
 export interface TariffsBoxPipelineDependencies {
     apiClient: TariffsBoxApiClient;
@@ -66,7 +60,8 @@ export class TariffsBoxPipeline {
         );
         this.#logger.info("[tariffs-box] Raw snapshot saved", { rawId: rawSnapshot.id });
 
-        const formattedRows = this.#parser.parse(apiResponse.payload, rawSnapshot.id);
+        const parseResult = this.#parser.parse(apiResponse.payload, rawSnapshot.id);
+        const formattedRows = parseResult.formattedRows;
         this.#logger.info("[tariffs-box] Parsed rows", { count: formattedRows.length });
 
         const replaced = await this.#formattedRepository.replaceForRawId(rawSnapshot.id, formattedRows);
@@ -80,7 +75,7 @@ export class TariffsBoxPipeline {
             parsedRows: formattedRows.length,
             exportedRows: exported,
             skipped: false,
+            structuredResponse: parseResult.structuredResponse,
         };
     }
 }
-

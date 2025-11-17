@@ -48,3 +48,35 @@ ping -> fetch -> persistRawFiles -> insertRawDb -> parse -> upsertFormatted -> e
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
 
 Все переменные валидируются в `src/config/env/env.ts`.
+
+### Структура результата
+
+`TariffsBoxParser` возвращает объект вида:
+
+```
+{
+  "response": {
+    "data": {
+      "dtNextBox": "...",
+      "dtTillMax": "...",
+      "warehouseList": [
+        {
+          "geoName": "...",
+          "warehouseName": "...",
+          "boxDeliveryBase": "...",
+          "boxDeliveryCoefExpr": "...",
+          "boxDeliveryLiter": "...",
+          "boxDeliveryMarketplaceBase": "...",
+          "boxDeliveryMarketplaceCoefExpr": "...",
+          "boxDeliveryMarketplaceLiter": "...",
+          "boxStorageBase": "...",
+          "boxStorageCoefExpr": "...",
+          "boxStorageLiter": "..."
+        }
+      ]
+    }
+  }
+}
+```
+
+Эта структура сохраняется в `meta` таблицы `tariffs_box`, используется при экспорте в Google Sheets и возвращается из `TariffsBoxPipeline.run()`.

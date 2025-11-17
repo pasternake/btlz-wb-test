@@ -60,6 +60,7 @@ npm run dev
     - Сохраняет raw JSON/текст в файловой системе и таблице `tariffs_box_raw`.
     - Нормализует данные и пишет их в `tariffs_box`.
     - Экспортирует результат в указанный Google Spreadsheet.
+    - Возвращает JSON со структурой `response.data.dtNextBox/dtTillMax/warehouseList`, аналогичной ответу Wildberries.
 
 Запуск проверки самого приложения:
 

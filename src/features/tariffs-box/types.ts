@@ -45,14 +45,49 @@ export interface TariffsBoxRawRecord extends CreateRawSnapshotInput {
 export interface TariffsBoxFormattedRecord {
     id: string;
     rawId: string;
+    dtNextBox: string | null;
+    dtTillMax: string | null;
+    geoName: string | null;
     warehouseName: string | null;
-    boxType: string | null;
-    deliveryType: string | null;
-    price: number | null;
-    currency: string | null;
-    weightFrom: number | null;
-    weightTo: number | null;
+    boxDeliveryBase: string | null;
+    boxDeliveryCoefExpr: string | null;
+    boxDeliveryLiter: string | null;
+    boxDeliveryMarketplaceBase: string | null;
+    boxDeliveryMarketplaceCoefExpr: string | null;
+    boxDeliveryMarketplaceLiter: string | null;
+    boxStorageBase: string | null;
+    boxStorageCoefExpr: string | null;
+    boxStorageLiter: string | null;
     meta: Record<string, unknown>;
+}
+
+export interface TariffsBoxWarehouseMetrics {
+    geoName: string | null;
+    warehouseName: string | null;
+    boxDeliveryBase: string | null;
+    boxDeliveryCoefExpr: string | null;
+    boxDeliveryLiter: string | null;
+    boxDeliveryMarketplaceBase: string | null;
+    boxDeliveryMarketplaceCoefExpr: string | null;
+    boxDeliveryMarketplaceLiter: string | null;
+    boxStorageBase: string | null;
+    boxStorageCoefExpr: string | null;
+    boxStorageLiter: string | null;
+}
+
+export interface TariffsBoxStructuredResponse {
+    response: {
+        data: {
+            dtNextBox: string | null;
+            dtTillMax: string | null;
+            warehouseList: TariffsBoxWarehouseMetrics[];
+        };
+    };
+}
+
+export interface TariffsBoxParseResult {
+    formattedRows: TariffsBoxFormattedRecord[];
+    structuredResponse: TariffsBoxStructuredResponse;
 }
 
 export interface TariffsBoxPipelineResult {
@@ -60,6 +95,7 @@ export interface TariffsBoxPipelineResult {
     parsedRows: number;
     exportedRows: number;
     skipped: boolean;
+    structuredResponse: TariffsBoxStructuredResponse;
 }
 
 export type DbClient = Knex;

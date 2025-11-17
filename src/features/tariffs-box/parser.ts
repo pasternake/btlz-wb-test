@@ -1,80 +1,120 @@
 import crypto from "node:crypto";
-import { TariffsBoxFormattedRecord } from "#features/tariffs-box/types.js";
+import { TariffsBoxFormattedRecord, TariffsBoxParseResult, TariffsBoxStructuredResponse, TariffsBoxWarehouseMetrics } from "#features/tariffs-box/types.js";
 
 type PlainObject = Record<string, unknown>;
 
 export class TariffsBoxParser {
-    parse(payload: unknown, rawId: string): TariffsBoxFormattedRecord[] {
-        const candidates = this.#collectCandidates(payload);
-        return candidates.map((candidate, index) => ({
+    parse(payload: unknown, rawId: string): TariffsBoxParseResult {
+        const extracted = this.#extractData(payload);
+        const formattedRows = extracted.warehouseList.map((warehouse, index) =>
+            this.#buildFormattedRow(warehouse, rawId, index, extracted.dtNextBox, extracted.dtTillMax),
+        );
+
+        const structuredResponse: TariffsBoxStructuredResponse = {
+            response: {
+                data: {
+                    dtNextBox: extracted.dtNextBox,
+                    dtTillMax: extracted.dtTillMax,
+                    warehouseList: extracted.warehouseList,
+                },
+            },
+        };
+
+        return {
+            formattedRows,
+            structuredResponse,
+        };
+    }
+
+    #extractData(payload: unknown): {
+        dtNextBox: string | null;
+        dtTillMax: string | null;
+        warehouseList: TariffsBoxWarehouseMetrics[];
+    } {
+        if (!this.#isPlainObject(payload)) {
+            return { dtNextBox: null, dtTillMax: null, warehouseList: [] };
+        }
+        const response = payload.response;
+        if (!this.#isPlainObject(response)) {
+            return { dtNextBox: null, dtTillMax: null, warehouseList: [] };
+        }
+        const data = response.data;
+        if (!this.#isPlainObject(data)) {
+            return { dtNextBox: null, dtTillMax: null, warehouseList: [] };
+        }
+
+        const dtNextBox = this.#toNullableString(data.dtNextBox);
+        const dtTillMax = this.#toNullableString(data.dtTillMax);
+        const rawWarehouseList = Array.isArray(data.warehouseList) ? data.warehouseList : [];
+
+        const warehouseList: TariffsBoxWarehouseMetrics[] = rawWarehouseList
+            .map((item) => this.#normalizeWarehouse(item))
+            .filter((item): item is TariffsBoxWarehouseMetrics => Boolean(item));
+
+        return { dtNextBox, dtTillMax, warehouseList };
+    }
+
+    #normalizeWarehouse(entry: unknown): TariffsBoxWarehouseMetrics | null {
+        if (!this.#isPlainObject(entry)) return null;
+        return {
+            geoName: this.#toNullableString(entry.geoName),
+            warehouseName: this.#toNullableString(entry.warehouseName),
+            boxDeliveryBase: this.#toNullableString(entry.boxDeliveryBase),
+            boxDeliveryCoefExpr: this.#toNullableString(entry.boxDeliveryCoefExpr),
+            boxDeliveryLiter: this.#toNullableString(entry.boxDeliveryLiter),
+            boxDeliveryMarketplaceBase: this.#toNullableString(entry.boxDeliveryMarketplaceBase),
+            boxDeliveryMarketplaceCoefExpr: this.#toNullableString(entry.boxDeliveryMarketplaceCoefExpr),
+            boxDeliveryMarketplaceLiter: this.#toNullableString(entry.boxDeliveryMarketplaceLiter),
+            boxStorageBase: this.#toNullableString(entry.boxStorageBase),
+            boxStorageCoefExpr: this.#toNullableString(entry.boxStorageCoefExpr),
+            boxStorageLiter: this.#toNullableString(entry.boxStorageLiter),
+        };
+    }
+
+    #buildFormattedRow(
+        warehouse: TariffsBoxWarehouseMetrics,
+        rawId: string,
+        index: number,
+        dtNextBox: string | null,
+        dtTillMax: string | null,
+    ): TariffsBoxFormattedRecord {
+        return {
             id: crypto.randomUUID(),
             rawId,
-            warehouseName: this.#pickString(candidate, ["warehouseName", "warehouse", "warehouseTitle", "warehouse_name"]),
-            boxType: this.#pickString(candidate, ["boxType", "box_type", "packageType", "type"]),
-            deliveryType: this.#pickString(candidate, ["deliveryType", "delivery", "deliveryScheme"]),
-            price: this.#pickNumber(candidate, ["price", "cost", "tariff", "amount"]),
-            currency: this.#pickString(candidate, ["currency", "currencyCode"]),
-            weightFrom: this.#pickNumber(candidate, ["weightFrom", "minWeight", "weightMin"]),
-            weightTo: this.#pickNumber(candidate, ["weightTo", "maxWeight", "weightMax"]),
+            dtNextBox,
+            dtTillMax,
+            geoName: warehouse.geoName,
+            warehouseName: warehouse.warehouseName,
+            boxDeliveryBase: warehouse.boxDeliveryBase,
+            boxDeliveryCoefExpr: warehouse.boxDeliveryCoefExpr,
+            boxDeliveryLiter: warehouse.boxDeliveryLiter,
+            boxDeliveryMarketplaceBase: warehouse.boxDeliveryMarketplaceBase,
+            boxDeliveryMarketplaceCoefExpr: warehouse.boxDeliveryMarketplaceCoefExpr,
+            boxDeliveryMarketplaceLiter: warehouse.boxDeliveryMarketplaceLiter,
+            boxStorageBase: warehouse.boxStorageBase,
+            boxStorageCoefExpr: warehouse.boxStorageCoefExpr,
+            boxStorageLiter: warehouse.boxStorageLiter,
             meta: {
                 index,
-                candidate,
+                dtNextBox,
+                dtTillMax,
+                ...warehouse,
             },
-        }));
+        };
     }
 
-    #collectCandidates(payload: unknown): PlainObject[] {
-        const result: PlainObject[] = [];
-        const stack: unknown[] = [payload];
-        while (stack.length > 0) {
-            const current = stack.pop();
-            if (Array.isArray(current)) {
-                for (const item of current) stack.push(item);
-                continue;
-            }
-            if (current && typeof current === "object") {
-                const obj = current as PlainObject;
-                if (this.#looksLikeTariff(obj)) {
-                    result.push(obj);
-                }
-                for (const value of Object.values(obj)) {
-                    if (value && (Array.isArray(value) || typeof value === "object")) {
-                        stack.push(value);
-                    }
-                }
-            }
+    #toNullableString(value: unknown): string | null {
+        if (typeof value === "string") {
+            const trimmed = value.trim();
+            return trimmed.length > 0 ? trimmed : null;
         }
-        return result;
-    }
-
-    #looksLikeTariff(obj: PlainObject): boolean {
-        const keys = Object.keys(obj);
-        const priceHints = ["price", "cost", "amount", "tariff"];
-        const hasPrice = keys.some((key) => priceHints.includes(key));
-        const hasWarehouse = keys.some((key) => key.toLowerCase().includes("warehouse"));
-        const hasBox = keys.some((key) => key.toLowerCase().includes("box") || key.toLowerCase().includes("package"));
-        return hasPrice || (hasWarehouse && hasBox);
-    }
-
-    #pickString(obj: PlainObject, keys: string[]): string | null {
-        for (const key of keys) {
-            const value = obj[key];
-            if (typeof value === "string" && value.trim().length > 0) {
-                return value;
-            }
+        if (typeof value === "number") {
+            return Number.isFinite(value) ? value.toString() : null;
         }
         return null;
     }
 
-    #pickNumber(obj: PlainObject, keys: string[]): number | null {
-        for (const key of keys) {
-            const value = obj[key];
-            const numberValue = typeof value === "number" ? value : typeof value === "string" ? Number(value) : null;
-            if (numberValue !== null && Number.isFinite(numberValue)) {
-                return numberValue;
-            }
-        }
-        return null;
+    #isPlainObject(value: unknown): value is PlainObject {
+        return Boolean(value) && typeof value === "object" && !Array.isArray(value);
     }
 }
-

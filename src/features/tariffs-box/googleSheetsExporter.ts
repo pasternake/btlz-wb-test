@@ -28,24 +28,36 @@ export class GoogleSheetsExporter {
         }
         const values = [
             [
-                "Warehouse",
-                "Box Type",
-                "Delivery Type",
-                "Price",
-                "Currency",
-                "Weight From",
-                "Weight To",
-                "Raw ID",
-                "Record ID",
+                "dtNextBox",
+                "dtTillMax",
+                "geoName",
+                "warehouseName",
+                "boxDeliveryBase",
+                "boxDeliveryCoefExpr",
+                "boxDeliveryLiter",
+                "boxDeliveryMarketplaceBase",
+                "boxDeliveryMarketplaceCoefExpr",
+                "boxDeliveryMarketplaceLiter",
+                "boxStorageBase",
+                "boxStorageCoefExpr",
+                "boxStorageLiter",
+                "rawId",
+                "recordId",
             ],
             ...rows.map((row) => [
+                row.dtNextBox ?? "",
+                row.dtTillMax ?? "",
+                row.geoName ?? "",
                 row.warehouseName ?? "",
-                row.boxType ?? "",
-                row.deliveryType ?? "",
-                row.price ?? "",
-                row.currency ?? "",
-                row.weightFrom ?? "",
-                row.weightTo ?? "",
+                row.boxDeliveryBase ?? "",
+                row.boxDeliveryCoefExpr ?? "",
+                row.boxDeliveryLiter ?? "",
+                row.boxDeliveryMarketplaceBase ?? "",
+                row.boxDeliveryMarketplaceCoefExpr ?? "",
+                row.boxDeliveryMarketplaceLiter ?? "",
+                row.boxStorageBase ?? "",
+                row.boxStorageCoefExpr ?? "",
+                row.boxStorageLiter ?? "",
                 row.rawId,
                 row.id,
             ]),
@@ -61,5 +73,5 @@ export class GoogleSheetsExporter {
         });
         return rows.length;
     }
-}
 
+}

@@ -36,7 +36,12 @@ async function bootstrap() {
     });
 
     const result = await pipeline.run();
-    console.log("Tariffs pipeline finished", result);
+    console.log("Tariffs pipeline finished", {
+        rawSnapshotId: result.rawSnapshotId,
+        parsedRows: result.parsedRows,
+        exportedRows: result.exportedRows,
+    });
+    console.log("Structured response:", JSON.stringify(result.structuredResponse, null, 2));
 }
 
 bootstrap().catch((error) => {
