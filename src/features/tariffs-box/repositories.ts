@@ -1,17 +1,14 @@
 import crypto from "node:crypto";
 import knex from "#postgres/knex.js";
-import {
-    CreateRawSnapshotInput,
-    DbClient,
-    TariffsBoxFormattedRecord,
-    TariffsBoxRawRecord,
-} from "#features/tariffs-box/types.js";
+import { CreateRawSnapshotInput, DbClient, TariffsBoxFormattedRecord, TariffsBoxRawRecord } from "#features/tariffs-box/types.js";
 
 export class TariffsBoxRawRepository {
     #db: DbClient;
+    #logger: Console;
 
     constructor(db: DbClient = knex) {
         this.#db = db;
+        this.#logger = console;
     }
 
     async create(payload: CreateRawSnapshotInput): Promise<TariffsBoxRawRecord> {
@@ -25,6 +22,7 @@ export class TariffsBoxRawRepository {
             status_code: payload.statusCode,
             payload_hash: payload.payloadHash,
         };
+        this.#logger?.debug("[tariffs-box] Inserting raw snapshot record", { JSON: JSON.stringify(record) });
         const [row] = await this.#db("tariffs_box_raw").insert(record).returning("*");
         return row as TariffsBoxRawRecord;
     }
@@ -74,4 +72,3 @@ export function buildRawSnapshotInput(params: {
         ...params,
     };
 }
-
