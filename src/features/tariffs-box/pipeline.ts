@@ -42,6 +42,8 @@ export class TariffsBoxPipeline {
 
     async run(): Promise<TariffsBoxPipelineResult> {
         this.#logger.info("[tariffs-box] Starting pipeline");
+        await this.#apiClient.ping();
+        this.#logger.info("[tariffs-box] Ping successful");
         const apiResponse = await this.#apiClient.fetchTariffs();
         this.#logger.info("[tariffs-box] Payload fetched", {
             status: apiResponse.status,

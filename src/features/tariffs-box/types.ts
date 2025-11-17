@@ -3,6 +3,7 @@ import type { Knex } from "knex";
 export interface TariffsBoxApiClientConfig {
     baseUrl: string;
     endpoint: string;
+    pingEndpoint: string;
     token: string;
     timeoutMs: number;
 }
@@ -62,4 +63,3 @@ export interface TariffsBoxPipelineResult {
 }
 
 export type DbClient = Knex;
-

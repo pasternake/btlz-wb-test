@@ -9,24 +9,27 @@
 
 ### Этапы работы
 
-1. **Запрос внешнего API**
+1. **Ping внешнего API**
+    - `TariffsBoxApiClient.ping` обращается к `/ping` на Wildberries до основного запроса тарифов.
+    - Позволяет проверить доступность и быстро отвалиться при проблемах сети.
+2. **Запрос внешнего API**
     - Используется `TariffsBoxApiClient` с настраиваемыми base URL, endpoint, токеном и таймаутом.
     - Добавляются метаданные запроса/ответа для наблюдаемости.
-2. **Сохранение raw-слепка**
+3. **Сохранение raw-слепка**
     - `RawStorageService` записывает красиво отформатированный JSON и текст в `storage/raw/`.
     - `TariffsBoxRawRepository` сохраняет полезную нагрузку, метаданные и пути к файлам в таблице `tariffs_box_raw`.
-3. **Парсинг и нормализация**
+4. **Парсинг и нормализация**
     - `TariffsBoxParser` ищет в ответе объекты, похожие на тарифы (цена, склад, тип коробки и т.д.).
     - Формирует плоские строки с одинаковыми колонками и оригинальным объектом в `meta`.
     - `TariffsBoxRepository` обновляет строки для соответствующего raw-слепка в таблице `tariffs_box`.
-4. **Экспорт в Google Sheets**
+5. **Экспорт в Google Sheets**
     - `GoogleSheetsExporter` авторизуется через сервисный аккаунт и перезаписывает указанный диапазон.
     - Выгружает строку заголовков и нормализованные данные (батчами, если более 5k строк).
 
 ### Последовательность асинхронных задач
 
 ```
-fetch -> persistRawFiles -> insertRawDb -> parse -> upsertFormatted -> exportSheet
+ping -> fetch -> persistRawFiles -> insertRawDb -> parse -> upsertFormatted -> exportSheet
 ```
 
 Каждый этап ожидает завершения предыдущего, что гарантирует порядок и упрощает повторные попытки.
@@ -39,7 +42,7 @@ fetch -> persistRawFiles -> insertRawDb -> parse -> upsertFormatted -> exportShe
 
 ### Переменные окружения
 
-- `WB_API_URL`, `WB_API_TOKEN`, `WB_API_TIMEOUT_MS`
+- `WB_API_URL`, `WB_API_PING_ENDPOINT`, `WB_API_TOKEN`, `WB_API_TIMEOUT_MS`
 - `RAW_STORAGE_DIR`
 - `GOOGLE_SPREADSHEET_ID`, `GOOGLE_SHEET_RANGE`
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`

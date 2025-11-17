@@ -3,10 +3,7 @@ import env from "#config/env/env.js";
 import { TariffsBoxPipeline } from "#features/tariffs-box/pipeline.js";
 import { TariffsBoxApiClient } from "#features/tariffs-box/apiClient.js";
 import { RawStorageService } from "#features/tariffs-box/rawStorage.js";
-import {
-    TariffsBoxRawRepository,
-    TariffsBoxRepository,
-} from "#features/tariffs-box/repositories.js";
+import { TariffsBoxRawRepository, TariffsBoxRepository } from "#features/tariffs-box/repositories.js";
 import { TariffsBoxParser } from "#features/tariffs-box/parser.js";
 import { GoogleSheetsExporter } from "#features/tariffs-box/googleSheetsExporter.js";
 
@@ -19,6 +16,7 @@ async function bootstrap() {
         apiClient: new TariffsBoxApiClient({
             baseUrl: env.WB_API_URL,
             endpoint: env.WB_API_ENDPOINT,
+            pingEndpoint: env.WB_API_PING_ENDPOINT,
             token: env.WB_API_TOKEN,
             timeoutMs: env.WB_API_TIMEOUT_MS,
         }),
