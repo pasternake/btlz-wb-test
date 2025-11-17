@@ -27,7 +27,7 @@ export class TariffsBoxApiClient {
         // TODO: consider as parameter if needed
         const currentDateISO = new Date().toISOString().split("T")[0];
         const url = this.#buildUrl(this.#config.endpoint) + `?date=${encodeURIComponent(currentDateISO)}`;
-        this.#logger?.log(`Fetching tariffs from ${url}`);
+        this.#logger?.debug(`Fetching tariffs from ${url}`);
         const response = await this.#safeFetch(url);
         try {
             const rawBody = await response.text();
