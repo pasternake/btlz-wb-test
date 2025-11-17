@@ -96,6 +96,7 @@ export interface TariffsBoxPipelineResult {
     exportedRows: number;
     skipped: boolean;
     structuredResponse: TariffsBoxStructuredResponse;
+    exportResults?: Array<{ spreadsheetId: string; success: boolean; rowsExported: number; error?: string }>;
 }
 
 export type DbClient = Knex;
