@@ -23,7 +23,10 @@ export class TariffsBoxApiClient {
     }
 
     async fetchTariffs(): Promise<TariffsBoxApiResponse> {
-        const url = this.#buildUrl(this.#config.endpoint);
+        // Use current date in YYYY-MM-DD format.
+        // TODO: consider as parameter if needed
+        const currentDateISO = new Date().toISOString().split("T")[0];
+        const url = this.#buildUrl(this.#config.endpoint) + `?date=${encodeURIComponent(currentDateISO)}`;
         this.#logger?.log(`Fetching tariffs from ${url}`);
         const response = await this.#safeFetch(url);
         try {
