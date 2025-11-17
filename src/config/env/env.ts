@@ -19,6 +19,20 @@ const envSchema = z.object({
             .regex(/^[0-9]+$/)
             .transform((value) => parseInt(value)),
     ]),
+    WB_API_URL: z.string().url(),
+    WB_API_ENDPOINT: z.string().default("/api/public/v1/tariffs-box"),
+    WB_API_PING_ENDPOINT: z.string().default("/ping"),
+    WB_API_TOKEN: z.string().default(""),
+    WB_API_TIMEOUT_MS: z.union([z.string().regex(/^[0-9]+$/), z.undefined()]).transform((value) => parseInt(value ?? "10000", 10)),
+    RAW_STORAGE_DIR: z.string().default("storage/raw"),
+    RAW_STORAGE_RETENTION_DAYS: z.union([z.string().regex(/^[0-9]+$/), z.undefined()]).transform((value) => parseInt(value ?? "7", 10)),
+    RAW_DB_RETENTION_DAYS: z.union([z.string().regex(/^[0-9]+$/), z.undefined()]).transform((value) => parseInt(value ?? "7", 10)),
+    PIPELINE_REFRESH_INTERVAL_MINUTES: z.union([z.string().regex(/^[0-9]+$/), z.undefined()]).transform((value) => parseInt(value ?? "60", 10)),
+    RETENTION_CLEANUP_INTERVAL_HOURS: z.union([z.string().regex(/^[0-9]+$/), z.undefined()]).transform((value) => parseInt(value ?? "6", 10)),
+    GOOGLE_SPREADSHEET_ID: z.string(),
+    GOOGLE_SHEET_RANGE: z.string().default("Tariffs!A1"),
+    GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().email(),
+    GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: z.string().transform((value) => value.replace(/\\n/g, "\n")),
 });
 
 const env = envSchema.parse({
@@ -29,6 +43,20 @@ const env = envSchema.parse({
     POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD,
     NODE_ENV: process.env.NODE_ENV,
     APP_PORT: process.env.APP_PORT,
+    WB_API_URL: process.env.WB_API_URL,
+    WB_API_ENDPOINT: process.env.WB_API_ENDPOINT,
+    WB_API_PING_ENDPOINT: process.env.WB_API_PING_ENDPOINT,
+    WB_API_TOKEN: process.env.WB_API_TOKEN,
+    WB_API_TIMEOUT_MS: process.env.WB_API_TIMEOUT_MS,
+    RAW_STORAGE_DIR: process.env.RAW_STORAGE_DIR,
+    RAW_STORAGE_RETENTION_DAYS: process.env.RAW_STORAGE_RETENTION_DAYS,
+    RAW_DB_RETENTION_DAYS: process.env.RAW_DB_RETENTION_DAYS,
+    PIPELINE_REFRESH_INTERVAL_MINUTES: process.env.PIPELINE_REFRESH_INTERVAL_MINUTES,
+    RETENTION_CLEANUP_INTERVAL_HOURS: process.env.RETENTION_CLEANUP_INTERVAL_HOURS,
+    GOOGLE_SPREADSHEET_ID: process.env.GOOGLE_SPREADSHEET_ID,
+    GOOGLE_SHEET_RANGE: process.env.GOOGLE_SHEET_RANGE,
+    GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
 });
 
 export default env;

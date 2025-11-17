@@ -1,0 +1,89 @@
+## Канал данных Tariffs Box
+
+### Цели
+
+- Получить данные тарифов Wildberries (tariffs-box) через внешний HTTP API.
+- Сохранить необработанный ответ локально (JSON и текст) и в Postgres для отслеживаемости.
+- Распарсить данные в нормализованную таблицу `tariffs_box` для дальнейшего использования.
+- Экспортировать нормализованный набор данных в Google Sheets для аналитиков и стейкхолдеров.
+
+### Этапы работы
+
+1. **Ping внешнего API**
+    - `TariffsBoxApiClient.ping` обращается к `/ping` на Wildberries до основного запроса тарифов.
+    - Позволяет проверить доступность и быстро отвалиться при проблемах сети.
+2. **Запрос внешнего API**
+    - Используется `TariffsBoxApiClient` с настраиваемыми base URL, endpoint, токеном и таймаутом.
+    - Добавляются метаданные запроса/ответа для наблюдаемости.
+3. **Сохранение raw-слепка**
+    - `RawStorageService` записывает красиво отформатированный JSON и текст в `storage/raw/`.
+    - `TariffsBoxRawRepository` сохраняет полезную нагрузку, метаданные и пути к файлам в таблице `tariffs_box_raw`.
+4. **Парсинг и нормализация**
+    - `TariffsBoxParser` ищет в ответе объекты, похожие на тарифы (цена, склад, тип коробки и т.д.).
+    - Формирует плоские строки с одинаковыми колонками и оригинальным объектом в `meta`.
+    - `TariffsBoxRepository` обновляет строки для соответствующего raw-слепка в таблице `tariffs_box`.
+5. **Экспорт в Google Sheets**
+    - `GoogleSheetsExporter` авторизуется через сервисный аккаунт и перезаписывает указанный диапазон.
+    - Выгружает строку заголовков и нормализованные данные (батчами, если более 5k строк).
+
+### Последовательность асинхронных задач
+
+```
+ping -> fetch -> persistRawFiles -> insertRawDb -> parse -> upsertFormatted -> exportSheet
+```
+
+Каждый этап ожидает завершения предыдущего, что гарантирует порядок и упрощает повторные попытки.
+
+### Обработка ошибок
+
+- Любая ошибка останавливает конвейер и оставляет текущие слепки нетронутыми (повторный запуск идемпотентен).
+- Дублированные ответы выявляются по хешу, сохраненному в `tariffs_box_raw.payload_hash`.
+- Экспорт в Google Sheets пропускается, если нет нормализованных строк.
+
+- `WB_API_URL`, `WB_API_PING_ENDPOINT`, `WB_API_TOKEN`, `WB_API_TIMEOUT_MS`
+- `RAW_STORAGE_DIR`, `RAW_STORAGE_RETENTION_DAYS`
+- `RAW_DB_RETENTION_DAYS`
+- `PIPELINE_REFRESH_INTERVAL_MINUTES`, `RETENTION_CLEANUP_INTERVAL_HOURS`
+- `GOOGLE_SPREADSHEET_ID`, `GOOGLE_SHEET_RANGE`
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
+
+Все переменные валидируются в `src/config/env/env.ts`.
+
+### Структура результата
+
+`TariffsBoxParser` возвращает объект вида:
+
+```
+{
+  "response": {
+    "data": {
+      "dtNextBox": "...",
+      "dtTillMax": "...",
+      "warehouseList": [
+        {
+          "geoName": "...",
+          "warehouseName": "...",
+          "boxDeliveryBase": "...",
+          "boxDeliveryCoefExpr": "...",
+          "boxDeliveryLiter": "...",
+          "boxDeliveryMarketplaceBase": "...",
+          "boxDeliveryMarketplaceCoefExpr": "...",
+          "boxDeliveryMarketplaceLiter": "...",
+          "boxStorageBase": "...",
+          "boxStorageCoefExpr": "...",
+          "boxStorageLiter": "..."
+        }
+      ]
+    }
+  }
+}
+```
+
+Эта структура сохраняется в `meta` таблицы `tariffs_box`, используется при экспорте в Google Sheets и возвращается из `TariffsBoxPipeline.run()`.
+
+### Планировщики и ретеншены
+
+- **Обновление тарифов** — `startSchedulers` перезапускает `TariffsBoxPipeline` каждые `PIPELINE_REFRESH_INTERVAL_MINUTES` (по умолчанию 60 минут).
+- **Retention файлов** — раз в `RETENTION_CLEANUP_INTERVAL_HOURS` очищает `storage/raw` от снапшотов старше `RAW_STORAGE_RETENTION_DAYS` (по умолчанию 7 дней).
+- **Retention `tariffs_box_raw`** — удаляет записи старше `RAW_DB_RETENTION_DAYS`.
+- **Retention `tariffs_box`** — для вчерашней даты сохраняется только последний `raw_id`; более старые ряды удаляются.
